@@ -31,11 +31,15 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	jobToWorkerCapacity = map[string]int{
-		"build": 1,
-		"test":  1,
-		// "deploy":  6,
-		// "execute": 8,
+		"build":   1,
+		"test":    1,
+		"deploy":  6,
+		"execute": 8,
 	}
+
+	// for i := 0; i < 2000; i++ {
+	// 	jobToWorkerCapacity[fmt.Sprintf("job%d", i)] = 500
+	// }
 
 	if *mode != "consume" && *mode != "publish" {
 		flag.Usage()
@@ -128,13 +132,13 @@ func publish(natsUrl string, recreate bool) error {
 	}
 
 	// publish the jobs to job stream
-	totalMsgPerJob := 1000
+	totalJobs := 1000000
 	i := 1
-	for i <= totalMsgPerJob {
+	for i <= totalJobs {
 		for jobType := range jobToWorkerCapacity {
 			var err error
 			subject := getSubjectFromJobType(jobType)
-			if i != totalMsgPerJob {
+			if i != totalJobs {
 				_, err = js.PublishAsync(subject, []byte(fmt.Sprintf("%s-%d", subject, i)), nats.MsgId(fmt.Sprintf("%d-%d", i, time.Now())))
 			} else {
 				_, err = js.Publish(subject, []byte(fmt.Sprintf("%s-%d", subject, i)), nats.MsgId(fmt.Sprintf("%d-%d", i, time.Now())))
@@ -177,6 +181,7 @@ func consume(natsUrl string) error {
 		}
 	}
 
+	fmt.Println("start consuming..")
 	go func() {
 		releaseWorker := make(chan bool)
 		for {
@@ -232,6 +237,9 @@ func consume(natsUrl string) error {
 	return nil
 }
 
+//
+// helper functions
+//
 func getJobTypeFromSubject(subject string) string {
 	return strings.Split(subject, ".")[1]
 }
